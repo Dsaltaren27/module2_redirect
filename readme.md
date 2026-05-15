@@ -5,8 +5,8 @@ Servicio de redirección que valida códigos cortos en DynamoDB y redirige a URL
 
 ## 🏗️ Arquitectura
 - **AWS Lambda**: Función GET `/{codigo}` para procesar redirecciones
-- **API Gateway HTTP**: Expone el endpoint `/go/{codigo}`
-- **DynamoDB**: Base de datos compartida con el módulo de acortamiento (tabla `url_shortener`)
+- **API Gateway HTTP**: Comparte el mismo endpoint base que el módulo 1
+- **DynamoDB**: Base de datos compartida con el módulo de acortamiento (tabla `UrlsTable`)
 
 ## 📦 Stack Tecnológico
 - **Runtime**: Node.js 18.x
@@ -20,7 +20,7 @@ Servicio de redirección que valida códigos cortos en DynamoDB y redirige a URL
    - `400`: Código faltante
    - `404`: Código no encontrado o expirado
    - `500`: Error interno del servidor
-4. **CORS**: Configurado para permitir solicitudes de cualquier origen
+4. **CORS**: Usa el API Gateway compartido del módulo 1 y permite solicitudes de cualquier origen
 
 ## 📁 Estructura de Archivos
 ```
@@ -118,7 +118,7 @@ Cache-Control: no-cache
 
 La tabla debe tener la siguiente estructura:
 ```
-Tabla: url_shortener
+Tabla: UrlsTable
 Partition Key: shortCode (String)
 
 Ejemplo de ítem:
@@ -126,7 +126,7 @@ Ejemplo de ítem:
   "shortCode": "abc123",
   "longUrl": "https://www.ejemplo.com/pagina-larga",
   "createdAt": "2025-01-01T12:00:00Z",
-  "expiresAt": null  // opcional
+  "clicks": 0
 }
 ```
 

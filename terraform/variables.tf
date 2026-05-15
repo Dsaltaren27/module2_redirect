@@ -7,5 +7,5 @@ variable "aws_region" {
 variable "table_name" {
   type        = string
   description = "Name of the DynamoDB table shared with the URL shortener service"
-  # This variable MUST be provided or set via terraform.tfvars
+  default     = "UrlsTable"
 }

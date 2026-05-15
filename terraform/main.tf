@@ -14,12 +14,22 @@ resource "aws_iam_role_policy_attachment" "basic_exec" {
 }
 
 resource "aws_iam_policy" "dynamo_read" {
-  name = "policy_redirection_dynamo_read"
+  name        = "policy_redirection_dynamo_read"
+  description = "Permite a la Lambda del Modulo 2 leer items de la tabla compartida"
+  
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{ Action = ["dynamodb:GetItem"], Effect = "Allow", Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.table_name}" }]
+    Statement = [
+      {
+        Action   = ["dynamodb:GetItem"]
+        Effect   = "Allow"
+        # Usamos interpolación para construir el ARN exacto de la tabla
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.table_name}"
+      }
+    ]
   })
 }
+
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role_policy_attachment" "dynamo_attach" {
@@ -54,42 +64,34 @@ resource "aws_lambda_function" "redirection_lambda" {
 
 
 
-# --- API GATEWAY HTTP ---
-resource "aws_apigatewayv2_api" "api" {
-  name          = "api-redirecion-module2"
-  protocol_type = "HTTP"
-  cors_configuration {
-    allow_origins = ["*"]
-    allow_methods = ["GET"]
-    allow_headers = ["content-type"]
+# --- API GATEWAY HTTP SHARED WITH MODULE 1 ---
+data "terraform_remote_state" "module1" {
+  backend = "local"
+  config = {
+    path = "../../module1_shorten/terraform/terraform.tfstate"
   }
 }
 
+data "aws_apigatewayv2_api" "module1_api" {
+  api_id = data.terraform_remote_state.module1.outputs.api_id
+}
+
 resource "aws_apigatewayv2_integration" "int" {
-  api_id           = aws_apigatewayv2_api.api.id
+  api_id           = data.aws_apigatewayv2_api.module1_api.id
   integration_type = "AWS_PROXY"
-  # Asegúrate de que el nombre coincida con tu recurso aws_lambda_function
   integration_uri  = aws_lambda_function.redirection_lambda.invoke_arn 
 }
 
 resource "aws_apigatewayv2_route" "route" {
-  api_id    = aws_apigatewayv2_api.api.id
-  # CAMBIO CLAVE: Método GET y parámetro dinámico entre llaves
-  route_key = "GET /{shortCode}" 
+  api_id    = data.aws_apigatewayv2_api.module1_api.id
+  route_key = "GET /{shortCode}"
   target    = "integrations/${aws_apigatewayv2_integration.int.id}"
-}
-
-resource "aws_apigatewayv2_stage" "stage" {
-  api_id      = aws_apigatewayv2_api.api.id
-  name        = "$default"
-  auto_deploy = true
 }
 
 resource "aws_lambda_permission" "apigw_lambda" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  # Asegúrate de que el nombre coincida con tu recurso aws_lambda_function
   function_name = aws_lambda_function.redirection_lambda.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
+  source_arn    = "${data.aws_apigatewayv2_api.module1_api.execution_arn}/*/*"
 }
