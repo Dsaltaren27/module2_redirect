@@ -23,7 +23,6 @@ resource "aws_iam_policy" "dynamo_read" {
       {
         Action   = ["dynamodb:GetItem"]
         Effect   = "Allow"
-        # Usamos interpolación para construir el ARN exacto de la tabla
         Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.table_name}"
       }
     ]
@@ -50,11 +49,10 @@ resource "aws_lambda_function" "redirection_lambda" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "url-shortener-redirection"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "handlers/redirect.handler" # Asegúrate de que coincida con tu estructura
+  handler          = "handlers/redirect.handler" 
   runtime          = "nodejs18.x"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
-  # VITAL: Aquí le pasas el nombre de la tabla a tu código JS
   environment {
     variables = {
       TABLE_NAME = var.table_name
