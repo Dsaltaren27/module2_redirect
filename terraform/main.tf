@@ -1,13 +1,17 @@
+# --- DATA SOURCES GLOBALES ---
+data "aws_caller_identity" "current" {}
+
 # --- IAM ROLE ---
 resource "aws_iam_role" "lambda_role" {
   name = "role_redirection_service"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{ Action = "sts:AssumeRole", Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" } }]
   })
 }
 
-# --- PERMISOS (CloudWatch + DynamoDB) ---
+# --- PERMISOS (CloudWatch + Consulta de DynamoDB) ---
 resource "aws_iam_role_policy_attachment" "basic_exec" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -29,14 +33,10 @@ resource "aws_iam_policy" "dynamo_read" {
   })
 }
 
-data "aws_caller_identity" "current" {}
-
 resource "aws_iam_role_policy_attachment" "dynamo_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.dynamo_read.arn
 }
-
-
 
 # --- LAMBDA FUNCTION ---
 data "archive_file" "lambda_zip" {
@@ -59,8 +59,6 @@ resource "aws_lambda_function" "redirection_lambda" {
     }
   }
 }
-
-
 
 # --- API GATEWAY HTTP SHARED WITH MODULE 1 ---
 data "terraform_remote_state" "module1" {
