@@ -1,5 +1,8 @@
-const { GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../utils/dynamodb");
+
+const TABLE_URLS = process.env.TABLE_NAME;
+const TABLE_STATS = process.env.TABLE_STATS_NAME;
 
 exports.handler = async (event) => {
   try {
@@ -12,14 +15,10 @@ exports.handler = async (event) => {
       };
     }
 
-    const params = {
-      TableName: process.env.TABLE_NAME, 
-      Key: {
-        shortCode: shortCode,
-      },
-    };
-
-    const { Item } = await docClient.send(new GetCommand(params));
+      const { Item } = await docClient.send(new GetCommand({
+      TableName: TABLE_URLS,
+      Key: { shortCode: shortCode },
+    }));
 
     // Validar si el código existe en la base de datos
     if (!Item || !Item.longUrl) {
@@ -29,6 +28,35 @@ exports.handler = async (event) => {
         body: JSON.stringify({ message: "El código no existe o ha expirado" }),
       };
     }
+
+// registro automático en la tabla de estadísticas
+    try{
+      const ip = event.requestContext?.identity?.sourceIp || 
+                 event.requestContext?.http?.sourceIp || "0.0.0.0";
+
+      const userAgent = event.headers?.["User-Agent"] || 
+                        event.headers?.["User-Agent"] || "Unknown";
+
+      const timestamp = new Date().toISOString();
+
+// Insertar el registro de acceso en la tabla de estadísticas 
+      await docClient.send(new PutCommand({
+        TableName: TABLE_STATS,
+        Item: {
+          shortCode: shortCode,          // Partition Key de tu tabla de estadísticas
+          timestamp: timestamp,          // Sort Key de tu tabla de estadísticas
+          ip: ip,
+          userAgent: userAgent
+        }
+      }));
+
+
+    } catch (statsError) {
+      console.error("Error al registrar estadísticas:", statsError);
+      // No interrumpir la redirección si falla el registro de estadísticas
+    }
+
+
 
     // El status 302 le dice al navegador que| redirija a la URL proporcionada
     return {

@@ -17,17 +17,24 @@ resource "aws_iam_role_policy_attachment" "basic_exec" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_iam_policy" "dynamo_read" {
-  name        = "policy_redirection_dynamo_read"
+resource "aws_iam_policy" "dynamo_read_write" {
+  name        = "policy_redirection_dynamo_read_write"
   description = "Permite a la Lambda del Modulo 2 leer items de la tabla compartida"
   
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid      = "AllowReadFromUrlsTable"
         Action   = ["dynamodb:GetItem"]
         Effect   = "Allow"
         Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.table_name}"
+      },
+            {
+        Sid      = "AllowWriteToStatsTable"
+        Action   = ["dynamodb:PutItem"]
+        Effect   = "Allow"
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.table_stats_name}"
       }
     ]
   })
@@ -35,7 +42,7 @@ resource "aws_iam_policy" "dynamo_read" {
 
 resource "aws_iam_role_policy_attachment" "dynamo_attach" {
   role       = aws_iam_role.lambda_role.name
-  policy_arn = aws_iam_policy.dynamo_read.arn
+  policy_arn = aws_iam_policy.dynamo_read_write.arn
 }
 
 # --- LAMBDA FUNCTION ---
@@ -56,6 +63,7 @@ resource "aws_lambda_function" "redirection_lambda" {
   environment {
     variables = {
       TABLE_NAME = var.table_name
+      TABLE_STATS_NAME = var.table_stats_name
     }
   }
 }
