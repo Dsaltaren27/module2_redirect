@@ -11,11 +11,12 @@ exports.handler = async (event) => {
     if (!shortCode) {
       return {
         statusCode: 400,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ error: "Falta el código de redirección" }),
       };
     }
 
-      const { Item } = await docClient.send(new GetCommand({
+    const { Item } = await docClient.send(new GetCommand({
       TableName: TABLE_URLS,
       Key: { shortCode: shortCode },
     }));
@@ -29,44 +30,47 @@ exports.handler = async (event) => {
       };
     }
 
-// registro automático en la tabla de estadísticas
-    try{
-      const ip = event.requestContext?.identity?.sourceIp || 
-                 event.requestContext?.http?.sourceIp || "0.0.0.0";
+    // Registro automático en la tabla de estadísticas
+    try {
+      // API Gateway HTTP API (payload 2.0) usa requestContext.http.sourceIp
+      // API Gateway REST API usa requestContext.identity.sourceIp
+      const ip =
+        event.requestContext?.http?.sourceIp ||
+        event.requestContext?.identity?.sourceIp ||
+        "0.0.0.0";
 
-      const userAgent = event.headers?.["User-Agent"] || 
-                        event.headers?.["User-Agent"] || "Unknown";
+      // API Gateway HTTP API convierte los headers a minúsculas
+      const userAgent =
+        event.headers?.["user-agent"] ||
+        event.headers?.["User-Agent"] ||
+        "Unknown";
 
       const timestamp = new Date().toISOString();
 
-// Insertar el registro de acceso en la tabla de estadísticas 
       await docClient.send(new PutCommand({
         TableName: TABLE_STATS,
         Item: {
-          shortCode: shortCode,          // Partition Key de tu tabla de estadísticas
-          timestamp: timestamp,          // Sort Key de tu tabla de estadísticas
+          shortCode: shortCode,
+          timestamp: timestamp,
           ip: ip,
-          userAgent: userAgent
-        }
+          userAgent: userAgent,
+        },
       }));
 
-
     } catch (statsError) {
-      console.error("Error al registrar estadísticas:", statsError);
       // No interrumpir la redirección si falla el registro de estadísticas
+      console.error("Error al registrar estadísticas:", statsError);
     }
 
-
-
-    // El status 302 le dice al navegador que| redirija a la URL proporcionada
+    // Status 302 le dice al navegador que redirija a la URL almacenada
     return {
       statusCode: 302,
       headers: {
         "Location": Item.longUrl,
-        "Access-Control-Allow-Origin": "*", 
-        "Cache-Control": "no-cache"        
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-cache",
       },
-      body: null, 
+      body: null,
     };
 
   } catch (error) {
@@ -74,9 +78,9 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        message: "Error interno en el servidor", 
-        detail: error.message 
+      body: JSON.stringify({
+        message: "Error interno en el servidor",
+        detail: error.message,
       }),
     };
   }

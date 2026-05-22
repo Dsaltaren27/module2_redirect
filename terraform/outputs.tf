@@ -1,19 +1,14 @@
-output "api_endpoint" {
-  description = "Base URL for the redirection API"
-  value       = data.aws_apigatewayv2_api.module1_api.api_endpoint
-}
-
-output "redirection_url" {
-  description = "Full redirection endpoint pattern"
-  value       = "${data.aws_apigatewayv2_api.module1_api.api_endpoint}/{shortCode}"
-}
-
 output "lambda_function_name" {
-  description = "Name of the Lambda function"
+  description = "Nombre de la Lambda de redirección"
   value       = aws_lambda_function.redirection_lambda.function_name
 }
 
-output "api_id" {
-  description = "API Gateway ID"
-  value       = data.aws_apigatewayv2_api.module1_api.id
+output "lambda_function_arn" {
+  description = "ARN de la Lambda de redirección"
+  value       = aws_lambda_function.redirection_lambda.arn
+}
+
+output "redirection_endpoint" {
+  description = "Endpoint de redirección (usar con /{shortCode})"
+  value       = "Usa el API Gateway del Módulo 1 con la ruta GET /{shortCode}"
 }

@@ -7,11 +7,19 @@ variable "aws_region" {
 variable "table_name" {
   type        = string
   description = "Name of the DynamoDB table shared with the URL shortener service"
-  default     = "UrlsTable"
 }
 
 variable "table_stats_name" {
   type        = string
   description = "Nombre de la tabla de DynamoDB asignada para las estadisticas de clicks"
-  default     = "LinkClicksTable" # <-- Configurado exactamente con el nombre de tu entorno
+}
+
+variable "api_gateway_id" {
+  type        = string
+  description = "ID del API Gateway HTTP creado por el Módulo 1"
+}
+
+variable "api_gateway_execution_arn" {
+  type        = string
+  description = "Execution ARN del API Gateway del Módulo 1 (para el permiso de Lambda)"
 }
