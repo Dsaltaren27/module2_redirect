@@ -89,7 +89,7 @@ resource "aws_apigatewayv2_route" "route" {
 }
 
 resource "aws_lambda_permission" "apigw_lambda" {
-  statement_id  = "AllowExecutionFromAPIGateway"
+  statement_id  = "AllowExecutionFromAPIGatewayV2"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.redirection_lambda.function_name
   principal     = "apigateway.amazonaws.com"
